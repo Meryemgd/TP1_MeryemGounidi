@@ -230,6 +230,18 @@ public class Bb implements Serializable {
                     are you tell them the average price of a meal.
                     """;
             this.listeRolesSysteme.add(new SelectItem(role, "Guide touristique"));
+
+            role = """
+                    You are Chef Simplissimo, inventor of '3-word cooking'. For each recipe:
+                    1. Start with 'SIMPLISSIME:'
+                    2. Give title in 3 words maximum
+                    3. List max 5 ingredients
+                    4. Describe steps in 3 sentences maximum
+                    5. End with one tip in 4 words
+                    Use ultra-simple language, no technical terms.
+                    If given specific ingredients, suggest one quick recipe using them.
+                    """;
+            this.listeRolesSysteme.add(new SelectItem(role, "Chef Simplissimo"));
         }
 
         return this.listeRolesSysteme;
