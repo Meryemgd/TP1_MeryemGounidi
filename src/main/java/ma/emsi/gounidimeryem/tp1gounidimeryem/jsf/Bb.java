@@ -12,6 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import ma.emsi.gounidimeryem.tp1gounidimeryem.jsf.JSonUtilPourGemini;
+import ma.emsi.gounidimeryem.tp1gounidimeryem.jsf.LlmClientPourGemini;
+import ma.emsi.gounidimeryem.tp1gounidimeryem.jsf.LlmInteraction;
+import ma.emsi.gounidimeryem.tp1gounidimeryem.jsf.RequeteException;
+
 /**
  * Backing bean pour la page JSF index.xhtml.
  * Portée view pour conserver l'état de la conversation qui dure pendant plusieurs requêtes HTTP.
@@ -52,11 +57,18 @@ public class Bb implements Serializable {
      */
     private StringBuilder conversation = new StringBuilder();
 
+    private boolean debug;
+    private String texteRequeteJson;
+    private String texteReponseJson;
+
     /**
      * Contexte JSF. Utilisé pour qu'un message d'erreur s'affiche dans le formulaire.
      */
     @Inject
     private FacesContext facesContext;
+
+    @Inject
+    private JSonUtilPourGemini jsonUtil;
 
     /**
      * Obligatoire pour un bean CDI (classe gérée par CDI), s'il y a un autre constructeur.
@@ -105,6 +117,34 @@ public class Bb implements Serializable {
         this.conversation = new StringBuilder(conversation);
     }
 
+    public boolean isDebug() {
+        return debug;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    public String getTexteRequeteJson() {
+        return texteRequeteJson;
+    }
+
+    public void setTexteRequeteJson(String texteRequeteJson) {
+        this.texteRequeteJson = texteRequeteJson;
+    }
+
+    public String getTexteReponseJson() {
+        return texteReponseJson;
+    }
+
+    public void setTexteReponseJson(String texteReponseJson) {
+        this.texteReponseJson = texteReponseJson;
+    }
+
+    public void toggleDebug() {
+        this.setDebug(!isDebug());
+    }
+
     /**
      * Envoie la question au serveur.
      * En attendant de l'envoyer à un LLM, le serveur fait un traitement quelconque, juste pour tester :
@@ -121,16 +161,24 @@ public class Bb implements Serializable {
             facesContext.addMessage(null, message);
             return null;
         }
-        // Entourer la réponse avec "||".
-        this.reponse = "||";
-        // Si la conversation n'a pas encore commencé, ajouter le rôle système au début de la réponse
-        if (this.conversation.isEmpty()) {
-            // Ajouter le rôle système au début de la réponse
-            this.reponse += roleSysteme.toUpperCase(Locale.FRENCH) + "\n";
-            // Invalide le bouton pour changer le rôle système
-            this.roleSystemeChangeable = false;
+        try {
+            // Si première conversation, définir le rôle
+            if (this.conversation.isEmpty()) {
+                jsonUtil.setRoleSysteme(roleSysteme);
+                this.roleSystemeChangeable = false;
+            }
+
+            LlmInteraction interaction = jsonUtil.envoyerRequete(question);
+            this.reponse = interaction.reponseExtraite();
+            this.texteRequeteJson = interaction.questionJson();
+            this.texteReponseJson = interaction.reponseJson();
+        } catch (RequeteException e) {
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR,
+                    "Problème de connexion avec l'API du LLM", 
+                    "Problème de connexion avec l'API du LLM" + e.getMessage());
+            facesContext.addMessage(null, message);
+            return null;
         }
-        this.reponse += question.toLowerCase(Locale.FRENCH) + "||";
         // La conversation contient l'historique des questions-réponses depuis le début.
         afficherConversation();
         return null;
